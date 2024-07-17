@@ -33,6 +33,7 @@ void	scnd_example()
 	uint64_t	now;
 
 	start_time = get_time();
+	//10.000 microseconds or 10 milliseconds
 	usleep(10000);
 	usleep(10000);
 	//usleep(10000);
