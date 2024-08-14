@@ -1,77 +1,67 @@
 #include "philo.h"
 
-void	print_status(t_philo *p, t_status flag)
+long	get_time(void)
 {
-	long long	now;
-	t_data		*table;
+	struct timeval	tv;
 
-	table = p->table;
-	pthread_mutex_lock(&table->print_mtx);
-	now = get_time() - table->start_simulation;
-	if (flag == DEAD)
-		printf("%lld %d died\n", now, p->id + 1);
-	pthread_mutex_lock(&table->mutex);
-	if (!table->is_all_alive)
+	gettimeofday(&tv, NULL);
+	return ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
+}
+
+void	check_and_wait(t_data *data, t_philo *philo, long time)
+{
+	long long	i;
+	bool		any_death;
+
+	i = get_time();
+	while (get_time() - i < time && !(end_sim(philo)))
 	{
-		pthread_mutex_unlock(&table->mutex);
-		pthread_mutex_unlock(&table->print_mtx);
+		pthread_mutex_lock(&data->dinner_mtx);
+		any_death = data->philo_died;
+		pthread_mutex_unlock(&data->dinner_mtx);
+		if (any_death)
+			break ;
+		usleep(100);
+	}
+}
+
+void	print_status(t_philo *philo, char *str)
+{
+	bool		any_death;
+
+	pthread_mutex_lock(&philo->table->print_mtx);
+	any_death = philo->table->philo_died;
+	if (any_death)
+	{
+		pthread_mutex_unlock(&philo->table->print_mtx);
 		return ;
 	}
-	pthread_mutex_unlock(&table->mutex);
-	if (flag == SLEEP)
-		printf ("%lld %d is sleeping\n", now, p->id + 1);
-	if (flag == THINK)
-		printf ("%lld %d is thinking\n", now, p->id + 1);
-	if (flag == EAT)
-		printf ("%lld %d is eating\n", now, p->id + 1);
-	if (flag == FORK)
-		printf ("%lld %d has taken a fork\n", now, p->id + 1);
-	pthread_mutex_unlock(&table->print_mtx);
+	printf("%ld ", get_time() - philo->table->start_time);
+	printf("%d ", philo->id);
+	printf("%s\n", str);
+	pthread_mutex_unlock(&philo->table->print_mtx);
+	return ;
 }
 
-void	free_all(t_data *data)
+bool	is_space(char c)
 {
-	int	i;
-
-	i = data->nbr_of_philos;
-	pthread_mutex_destroy(&data->mutex);
-	pthread_mutex_destroy(&data->print_mtx);
-	while (--i >= 0)
-	{
-		pthread_mutex_destroy(&data->arr_forks[i].fork);
-		free(data->arr_philos[i]);
-	}
-	free(data->arr_forks);
-	free(data->arr_philos);
+	return (c == 32 || (c >= 9 && c <= 13));
 }
 
-long	ft_atol(const char *str)
+long int	ft_atoi(char *str)
 {
-	long	r;
-	int		sign;
+	long int	num;
 
-	r = 0;
-	sign = 1;
-	while ((*str == 32) || (*str >= 9 && *str <= 13))
+	num = 0;
+	while (is_space(*str))
 		str++;
-	if (*str == '-' || *str == '+')
-	{
-		if (*str == '-')
-			sign = -1;
+	if (*str == '+')
 		str++;
-	}
 	while (*str >= '0' && *str <= '9')
 	{
-		r *= 10;
-		r += *str++ - '0';
+		num *= 10;
+		num += *str - 48;
+		str++;
 	}
-	return ((long)(r * sign));
-}
-
-void	print_error(int argc)
-{
-	if (argc < 5)
-		printf("Not enough args\n");
-	else if (argc >6)
-		printf("Too many args\n");
+	return (num);
 }

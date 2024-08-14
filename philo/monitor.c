@@ -1,64 +1,114 @@
 #include "philo.h"
 
-static int  is_alive_check(t_philo *p, t_data *table)
+bool	end_sim(t_philo *philo)
 {
-    long long   now;
+	bool	philo_full;
+	bool	death;
 
-    pthread_mutex_lock(&table->mutex);
-    now = get_time() - table->start_simulation;
-    if (now - p->last_eat > table->time_to_die)
-    {
-        table->is_all_alive = false;
-        pthread_mutex_unlock(&table->mutex);
-        print_status(p, DEAD);
-        return (1);
-    }
-    pthread_mutex_unlock(&table->mutex);
-    return (0);
+	pthread_mutex_lock(&philo->table->dinner_mtx);
+	death = philo->table->philo_died;
+	pthread_mutex_unlock(&philo->table->dinner_mtx);
+	if (death)
+		return (true);
+	pthread_mutex_lock(&philo->meal_death_mtx);
+	philo_full = philo->is_full;
+	pthread_mutex_unlock(&philo->meal_death_mtx);
+	if (philo_full)
+		return (true);
+	return (false);
 }
 
-static int  check_philo_status(t_data *data)
+static bool	death_checker(t_data *data, t_philo **philo)
 {
-    int i;
+	unsigned int	i;
+	bool			philo_full;
+	long			time_hungry;
 
-    i = 0;
-    while (i < data->nbr_of_philos)
-    {
-        if (is_alive_check(data->arr_philos[i], data))
-            return (1);
-        pthread_mutex_lock(&data->mutex);
-        if (data->arr_philos[i]->nbr_eats == data->eats_total && !data->arr_philos[i]->is_full)
-        {
-            data->count_full++;
-            data->arr_philos[i]->is_full = true;
-        }
-        pthread_mutex_unlock(&data->mutex);
-        if (data->count_full == data->nbr_of_philos)
-            return (1);
-        i++;
-    }
-    return (0);
+	i = 0;
+	while (i < data->nbr_of_philos)
+	{
+		pthread_mutex_lock(&philo[i]->last_meal_mtx);
+		pthread_mutex_lock(&philo[i]->meal_death_mtx);
+		philo_full = philo[i]->is_full;
+		time_hungry = get_time() - philo[i]->last_meal;
+		pthread_mutex_unlock(&philo[i]->last_meal_mtx);
+		pthread_mutex_unlock(&philo[i]->meal_death_mtx);
+		if (!philo_full && time_hungry >= data->time_to_die)
+		{
+			pthread_mutex_lock(&data->dinner_mtx);
+			print_status(philo[i], "died");
+			data->philo_died = true;
+			pthread_mutex_unlock(&data->dinner_mtx);
+			return (true);
+		}
+		i++;
+	}
+	return (false);
 }
 
-int monitor_routine(t_data *data)
+static bool	meal_done_checker(t_data *data, t_philo **philo)
 {
-    while (42)
-    {
-        if (check_philo_status(data))
-            return (1);
-        usleep(1200);
-    }
-    return (0);
+	unsigned int	i;
+	bool			philo_full;
+
+	if (data->meals_total == -1)
+		return (false);
+	i = 0;
+	while (i < data->nbr_of_philos)
+	{
+		pthread_mutex_lock(&philo[i]->meal_death_mtx);
+		philo_full = philo[i]->is_full;
+		pthread_mutex_unlock(&philo[i]->meal_death_mtx);
+		if (!philo_full)
+			return (false);
+		i++;
+	}
+	if (i == data->nbr_of_philos)
+	{
+		pthread_mutex_lock(&data->dinner_mtx);
+		data->all_full = true;
+		pthread_mutex_unlock(&data->dinner_mtx);
+		return (true);
+	}
+	return (false);
 }
 
-bool	check_all_alive(t_data *data)
+void	*end_sim_mntr(void *dt)
 {
-	bool	ret;
+	t_data	*data;
+	bool	any_death;
+	t_philo	**philo;
+	int		i;
+	time_t	start;
 
-	ret = true;
-	pthread_mutex_lock(&data->mutex);
-	if (data->is_all_alive == false)
-		ret = false;
-	pthread_mutex_unlock(&data->mutex);
-	return (ret);
+	i = 0;
+	data = (t_data *)dt;
+	philo = data->philos;
+	pthread_mutex_lock(&data->dinner_mtx);
+	start = data->start_time;
+	any_death = data->philo_died;
+	pthread_mutex_unlock(&data->dinner_mtx);
+	while (get_time() < start)
+		continue ;
+	if (any_death)
+		return (NULL);
+	while (!(meal_done_checker(data, philo)))
+	{
+		i++;
+		if (death_checker(data, philo))
+			return (NULL);
+		usleep(500);
+	}
+	return (NULL);
+}
+
+void	sync_start(t_philo *philo)
+{
+	long	start;
+
+	pthread_mutex_lock(&philo->table->dinner_mtx);
+	start = philo->table->start_time;
+	pthread_mutex_unlock(&philo->table->dinner_mtx);
+	while (get_time() < start)
+		continue ;
 }

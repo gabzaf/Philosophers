@@ -2,7 +2,7 @@ NAME	:= philo
 CC	:= cc
 CFLAGS	:= -Wall -Wextra -Werror
 RM	:= rm -rf
-SRC	:= main.c init.c monitor.c routine.c time.c parser.c utils.c 
+SRC	:= main.c parser.c exit.c utils.c init.c routine.c monitor.c	
 OBJ	:= $(SRC:.c=.o)
 
 all: $(NAME)
