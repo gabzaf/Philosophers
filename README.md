@@ -1,6 +1,6 @@
 # Philosophers
 
-This project is part of the 42 curriculum and aims to teach the basics of threading a process. In this project, you created threads and discover mutexes.
+This project is part of the 42 curriculum and aims to teach the basics of threading a process. In this project, I created threads and discover mutexes.
 
 ## Introduction
 
