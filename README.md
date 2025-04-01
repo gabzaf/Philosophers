@@ -14,7 +14,7 @@ To run the philosophers program, execute the following command:
 
 # Real-World Applications and Industry Relevance
 
-The Philosophers project isn't just an academic exercise—it mirrors concurrency and synchronization challenges encountered in real-world systems. Below are key applications of the concepts learned, along with the industries and companies that rely on this expertise:
+The Philosophers project isn't just an academic exercise—it mirrors concurrency and synchronization challenges encountered in real-world systems. Below are key applications of the concepts learned.
 
 ---
 
